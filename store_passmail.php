@@ -21,37 +21,44 @@ function MakePass($length){
     return($str);
 }
 if (isset($_SESSION["loginStore"])&&($_SESSION["loginStore"]!="")){
-    header("Location: store_center.php");
+    header("Location: hstindex.php");
 }
+//檢查是否為會員
 if (isset($_POST["account"])){
     $muser = GetSQLValueString($_POST["account"], 'string');
+    $mail = GetSQLValueString($_POST["email"], 'email');
+    //找尋該會員資料
     $query_RecFindUser = "SELECT StoreUsername, StorePassword FROM store WHERE StoreUsername='{$muser}'";
     $RecFindUser = $db_link->query($query_RecFindUser);
-    if($RecFindUser["StoreUsername"]->num_rows==0){
-        header("Location: store_passmail.php?errMsg=1&account={$muser}");
+    if($RecFindUser->num_rows==0){
+        header("Location: login.php?errMsg=1&account={$muser}");
     }else{
+        //取出帳號密碼的值
         $row_RecFindUser = $RecFindUser->fetch_assoc();
         $account = $row_RecFindUser["StoreUsername"];
         $password = $row_RecFindUser["StorePassword"];
-        //        $email = $row_RecFindUser["m_Email"];
+        
+        //產生新密碼並更新
         $newpasswd = MakePass(10);
+        $pass1 = password_hash($password, PASSWORD_DEFAULT);
         $mpass = password_hash($newpasswd, PASSWORD_DEFAULT);
-        $tpass = password_hash($password, PASSWORD_DEFAULT);
+        //密碼信
         $mailcontent = "您好，<br />您的帳號為：{$account} <br/>您的新密碼為：{$newpasswd} <br/>";
-        $mailForm="=?UTF-8?B?" . base64_encode("HandStory會員管理系統") . "?=<audrey.35921@gmail.com>";
-        $mailto = $_POST["email"];
+        $mailFrom="=?UTF-8?B?" . base64_encode("會員管理系統") . "?= <audrey.35921@gmail.com>";
+        $mailto = $mail;
         $mailSubject="=?UTF-8?B?" . base64_encode("補記密碼信") . "?=";
-        $mailHeader="From:".$mailForm."\r\n";
+        $mailHeader="From:".$mailFrom."\r\n";
         $mailHeader.="Content-type:text/html;charset=UTF-8";
-        if(@mail($mailto, $mailSubject, $mailcontent, $mailHeader)) {
-            $query_update = "UPDATE store SET StorePassword='{$mpass}' WHERE StoreUsername='{$account}'";
-            $db_link->query($query_update);
-        }else{
-            echo ("郵寄失敗");
-            $query_update2 = "UPDATE store SET StorePassword='{$tpass}' WHERE StoreUsername='{$account}'";
-            $db_link->query($query_update2);
+        if(!@mail($mailto, $mailSubject, $mailcontent, $mailHeader)) {
+            ?><script>alert('郵寄失敗!請在嘗試一次，若多次失敗，請聯絡我們!!');window.location.href='login.php';</script><?php
+            die("郵寄失敗");
+            $mpass = $pass1;
         }
-        header("Location: store_passmail.php?mailStats=1");
+        $query_update = "UPDATE store SET StorePassword='{$mpass}' WHERE StoreUsername='{$account}'";
+        $db_link->query($query_update);
+        header("Location: login.php?mailStats=1");
+        mysqli_free_result($stmt);
+        mysqli_free_result($RecFindUser);
     }
 }
 ?>
@@ -60,6 +67,28 @@ if (isset($_POST["account"])){
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
 <title>Handstory會員系統</title>
 <link href="style.css" rel="stylesheet" type="text/css">
+<script language="javascript">
+function checkForm() {
+	if(document.form1.account.value==""){		
+		alert("請填寫帳號!");
+		document.form1.account.focus();
+		return false;}
+	if(document.form1.email.value==""){
+		alert("請填寫電子郵件!");
+		document.form1.email.focus();
+		return false;}
+	if(!checkmail(document.form1.email)){
+		document.form1.email.focus();
+		return false;}
+}
+function checkmail(myEmail) {
+	var filter  = /^([a-zA-Z0-9_\.\-])+\@(([a-zA-Z0-9\-])+\.)+([a-zA-Z0-9]{2,4})+$/;
+	if(filter.test(myEmail.value)){
+		return true;}
+	alert("電子郵件格式不正確");
+	return false;
+}
+</script>
 </head>
 <body>
 <?php if(isset($_GET["mailStats"]) && ($_GET["mailStats"]=="1")){?>
@@ -70,10 +99,12 @@ if (isset($_POST["account"])){
 <td width="200%">
 <div class="boxtl"></div><div class="boxtr"></div><div class="regbox">
 <?php if(isset($_GET["errMsg"]) && ($_GET["errMsg"]=="1")){?>
-<div class="errDiv">帳號「<strong><?php echo $_GET["account"];?></strong>」沒有人使用！</div>
+<script>
+						alert('帳號「 <?php echo $_GET["account"];?> 」沒有人使用！');window.location.href='login.php#modal1';
+					</script>
 <?php }?>
 <p class="heading">忘記密碼？</p>
-<form name="form1" method="POST" action="">
+<form name="form1" method="POST" action="" id="form1" onSubmit="return checkForm();">
 <p>請輸入您的帳號及信箱，系統將自動產生一個十位數的密碼寄到您輸入的信箱。</p>
 <p><strong>帳號</strong>：<br>
 <input name="account" type="text" class="logintextbox" id="account"/></p>

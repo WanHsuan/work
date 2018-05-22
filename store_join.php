@@ -1,6 +1,8 @@
 <?php
-function GetSQLValueString($theValue, $theType){
-    switch ($theType){
+
+function GetSQLValueString($theValue, $theType)
+{
+    switch ($theType) {
         case "string":
             $theValue = ($theValue != "") ? filter_var($theValue, FILTER_SANITIZE_MAGIC_QUOTES) : "";
             break;
@@ -11,32 +13,77 @@ function GetSQLValueString($theValue, $theType){
             $theValue = ($theValue != "") ? filter_var($theValue, FILTER_VALIDATE_EMAIL) : "";
             break;
     }
-    return  $theValue;
+    return $theValue;
 }
 
-if(isset($_POST["action"]) && ($_POST["action"] == "join")){
+function resize_photo($src_file, $src_ext, $dest_name, $max_size)
+{
+    switch ($src_ext)
+    {
+        case ".jpg":
+            $src = imagecreatefromjpeg($src_file);
+            break;
+        case ".jpeg":
+            $src = imagecreatefromjpeg($src_file);
+            break;
+        case ".png":
+            $src = imagecreatefrompng($src_file);
+            break;
+        case ".gif":
+            $src = imagecreatefromgif($src_file);
+            break;
+    }
+    
+    $src_w = imagesx($src);
+    $src_h = imagesy($src);
+    
+    //建立新的空圖片
+    if($src_w > $src_h)
+    {
+        $thumb_w = $max_size;
+        $thumb_h = intval($src_h / $src_w * $thumb_w);
+    }
+    else
+    {
+        $thumb_h = $max_size;
+        $thumb_w = intval($src_w / $src_h * $thumb_h);
+    }
+    
+    $thumb = imagecreatetruecolor($thumb_w, $thumb_h);
+    
+    //進行複製並縮圖
+    imagecopyresized($thumb, $src, 0, 0, 0, 0, $thumb_w, $thumb_h, $src_w, $src_h);
+    
+    //儲存相片
+    imagejpeg($thumb, $dest_name, 100);
+    
+    //釋放影像佔用的記憶體
+    imagedestroy($src);
+    imagedestroy($thumb);
+}
+
+if (isset($_POST["action"]) && ($_POST["action"] == "join")) {
     require_once ("connMysql.php");
     $query_RecFindUser = "SELECT StoreUsername FROM store WHERE StoreUsername='{$_POST["account"]}'";
     $RecFindUser = $db_link->query($query_RecFindUser);
-    if($RecFindUser->num_rows>0){
+    if ($RecFindUser->num_rows > 0) {
         header("Location: store_join.php?errMsg=1&account={$_POST["account"]}");
-    }else{
+    } else {
+        $src_file = $_FILES["photo"]["tmp_name"];
+        $src_file_name = $_FILES["photo"]["name"];
+        $src_ext = strtolower(strrchr($_FILES["photo"]["name"], "."));
+        $desc_file_name = uniqid() . ".jpg";
+        
+        $photo_file_name = "./storephoto/$desc_file_name";
+        resize_photo($src_file, $src_ext, $photo_file_name, 600);
         $query_insert = "INSERT INTO store (StoreUsername, StorePassword, StoreName, StorePhone, StoreAddressCity, StoreAddressDistriction, StoreAddress, StoreStory, StorePhoto) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)";
         $stmt = $db_link->prepare($query_insert);
-        $stmt->bind_param("sssssssss", 
-            GetSQLValueString($_POST["account"], 'string'), 
-            password_hash($_POST["passwd"], PASSWORD_DEFAULT), 
-            GetSQLValueString($_POST["name"], 'string'), 
-            GetSQLValueString($_POST["phone"], 'string'), 
-            GetSQLValueString($_POST["city"], 'string'), 
-            GetSQLValueString($_POST["distriction"], 'string'), 
-            GetSQLValueString($_POST["address"], 'string'), 
-            GetSQLValueString($_POST["story"], 'string'), 
-            GetSQLValueString($_FILES["photo"]["name"], 'string'));
+        $stmt->bind_param("sssssssss", GetSQLValueString($_POST["account"], 'string'), password_hash($_POST["passwd"], PASSWORD_DEFAULT), GetSQLValueString($_POST["name"], 'string'), GetSQLValueString($_POST["phone"], 'string'), GetSQLValueString($_POST["city"], 'string'), GetSQLValueString($_POST["distriction"], 'string'), GetSQLValueString($_POST["address"], 'string'), GetSQLValueString($_POST["story"], 'string'), $desc_file_name);
         $stmt->execute();
-        if(!move_uploaded_file($_FILES["photo"]["tmp_name"] , "storephoto/" . $_FILES["photo"]["name"])) die("照片上傳失敗！");
+        
         $stmt->close();
         $db_link->close();
+        mysqli_free_result($stmt);
         header("Location: store_join.php?loginStats=1");
     }
 }
@@ -44,8 +91,69 @@ if(isset($_POST["action"]) && ($_POST["action"] == "join")){
 <html>
 <head>
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-<title>店家會員系統</title>
-<link href="style.css" rel="stylesheet" type="text/css">
+<link rel="stylesheet" href="style.css" type="text/css">
+<meta name="viewport" content="width= device-width" />
+<title>Hand's Story--店家註冊</title>
+
+<style>
+#apDiv1 {
+	position: absolute;
+	left: 750px;
+	top: 100px;
+	width: 550px;
+	height: 655px;
+	z-index: 1;
+	background-color: #FFF;
+	opacity: 0.9;
+	margin:0px;
+}
+
+#apDiv1 h1 {
+	margin: 0px;
+	padding: 0px;
+	padding-top:2px;
+	font-family: "翩翩體-繁";
+	color: #a7a5a7;
+	text-align: center;
+	font-size: 24px;
+}
+
+.heading {
+	margin: 0 px;
+	padding: 0px;
+	font-family: "翩翩體-繁";
+	color: #a7a5a7;
+	text-align: center;
+	font-size: 16px;
+}
+
+.context {
+	margin: 0 px;
+	padding: 0px;
+	font-family: "翩翩體-繁";
+	color: #a7a5a7;
+	font-size: 16px;
+}
+
+.smalltext {
+	margin: 0 px;
+	padding: 0px;
+	font-family: "翩翩體-繁";
+	color: #a7a5a7;
+	font-size: 12px;
+}
+
+#re {
+	padding: 0px;
+	margin: 0px;
+}
+hr {
+	padding: 0px;
+	margin: 0px;
+	color:#dcd8dc;
+}
+</style>
+
 <script type="text/javascript">
 function checkForm(){
 	if(document.formJoin.account.value==""){		
@@ -136,62 +244,98 @@ alert('店家新增成功\n請用申請的帳號密碼登入。');
 window.location.href='login.php';		  
 </script>
 <?php }?>
-<table>
-<tr>
-	<td class="tdbline"><table>
-	<tr valign="top">
-	<td class="tdrline"><form action="" method="POST" name="formJoin" id="formJoin" onSubmit="return checkForm();" enctype="multipart/form-data">
-	<p class="title">加入店家</p>
+<!--頁首-->
+	<header>
+		<img src="images/登入後LOGO.fw.png" width="1380" usemap="#Map" border="0" />
+		<map name="Map" id="Map">
+			<area shape="rect" coords="128,15,477,82" href="hindex.php"
+				target="_parent" />
+		</map>
+	</header>
+	<!--註冊畫面背景-->
+	<div class="register">
+		<img src="images/註冊背景.jpg" width="1378" height="666"
+			style="opacity: 0.9" />
+	</div>
+	<!--註冊框-->
+	<div id="apDiv1">
+		<h1>店家註冊
+		<span class="smalltext"><font color="#FF0000">*</font>表示為必填欄位</span></h1>
+		<div id="re">
+			<table class="register" width="500" border="0" align="center" cellpadding="0"
+			cellspacing="0" style='padding:1px 20px;'>
+				<tr>
+					<td class="tdbline"><table width="500" border="0" cellspacing="0"
+						cellpadding="10">
+							<tr valign="top">
+								<td class="tdrline"><form action="" method="POST"
+										name="formJoin" id="formJoin" onSubmit="return checkForm();"
+										enctype="multipart/form-data">
+										
 	<?php if(isset($_GET["errMsg"]) && ($_GET["errMsg"]=="1")){?>
 	<div class="errDiv">帳號<?php echo $_GET["account"];?>已經有人使用</div>
 	<?php }?>
 	<div class="dataDiv">
-	<hr size="1" />
-	<p class="heading">帳號資料</p>
-	<p><strong>使用帳號</strong>:
-	<input name="account" type="text" class="normalinput" id="account">
-	<font color ="#FF0000">*</font><br><span class="smalltext">請填入小寫英文字母、數字以及＿符號。</span></p>
-	<p><strong>使用密碼</strong>:
-	<input name="passwd" type="password" id="passwd" class="normalinput">
-	<font color="#FF0000">*</font><br><span class="smalltext">請填入8個字元以上的英文字母、數字以及各種符號組合。</span></p>
-	<p><strong>確認密碼</strong>:
-	<input name="passwdrecheck" type="password" class="normalinput" id="passwdrecheck">
-	<font color="#FF0000">*</font><br><span class="smalltext">再次輸入密碼</span></p>
-	<hr size="1" />
-	<p class="heading">店家資料</p>
-	<p><strong>店名</strong>:
-	<input name="name" type="text" class="normalinput" id="name">
-	<font color="#FF0000">*</font></p>
-	<p><strong>電話</strong>:
-	<input name="phone" type="text" class="normalinput" id="phone">
-	<font color="#FF0000">*</font></p>
-	<p><strong>店家所在縣市</strong>:
-	<input name="city" type="text" class="normalinput" id="city">
-	<font color="#FF0000">*</font></p>
-	<p><strong>店家所在市鎮區</strong>:
-	<input name="distriction" type="text" class="normalinput" id="distriction">
-	<font color="#FF0000">*</font></p>
-	<p><strong>店家地址</strong>:
-	<input name="address" type="text" class="normalinput" id="address">
-	<font color="#FF0000">*</font></p>
-	<p><strong>店家故事</strong>:
-	<textarea name="story" id="story" rows="10" cols="40"></textarea>
-	<font color="#FF0000">*</font></p>
-	<p><strong>店家照片</strong>:
-	<input type="file" name="photo" id="photo" />
-	<font color="#FF0000">*</font></p>
-	<p><font color="#FF0000">*</font>表示為必填欄位</p>
+											
+											<p class="heading">帳號資料</p>
+											<p class="context">
+												<font color="#FF0000">*</font><strong>使用帳號</strong>: <input name="account" type="text"
+													class="normalinput" id="account"> <br>
+												<span class="smalltext">請填入小寫英文字母、數字以及＿符號。</span>
+											</p>
+											<p class="context">
+												<font color="#FF0000">*</font><strong>使用密碼</strong>: <input name="passwd" type="password"
+													id="passwd" class="normalinput"> <br>
+												<span class="smalltext">請填入8個字元以上的英文字母、數字以及各種符號組合。</span>
+											</p>
+											<p class="context">
+												<font
+													color="#FF0000">*</font><strong>確認密碼</strong>: <input name="passwdrecheck"
+													type="password" class="normalinput" id="passwdrecheck"> <br>
+												<span class="smalltext">再次輸入密碼</span>
+											</p>
+											<hr size="1" />
+											<p class="heading">店家資料</p>
+											<p class="context">
+												<font color="#FF0000">*</font><strong>店名</strong>: <input name="name" type="text"
+													class="normalinput" id="name"> 
+											</p>
+											<p class="context">
+												<font color="#FF0000">*</font><strong>電話</strong>: <input name="phone" type="text"
+													class="normalinput" id="phone"> 
+											</p>
+											<p class="context">
+												 <font color="#FF0000">*</font><strong>地址</strong>: <input name="city" type="text"
+													class="normalinput" id="city" placeholder="縣市" style="width:80px;">
+													<input name="distriction"
+													type="text" class="normalinput" id="distriction" placeholder="鄉鎮區" style="width:80px;"> 
+													 <input name="address" type="text"
+													class="normalinput" id="address" placeholder="街道">
+											</p>
+											<p class="context">
+												<font color="#FF0000">*</font><strong>關於</strong>:
+												<textarea name="story" id="story"style="width: 300px; height: 60px;"></textarea>
+												
+											</p>
+											<p class="context">
+												  <font color="#FF0000">*</font><strong>店家照片</strong>: <input type="file" name="photo"
+													id="photo" />
+											</p>
+				
+										</div>
+										<p align="center">
+											<input name="action" type="hidden" id="action" value="join">
+											<input class="buttons" type="submit" name="Submit2" value="送出申請"> 
+											<input class="buttons" type="reset" name="Submit3" value="重設資料"> 
+											<input class="buttons" type="button" name="Submit" value="回上一頁"
+												onClick="window.history.back();">
+										</p>
+									</form></td>
+							</tr>
+						</table></td>
+				</tr>
+			</table>
+		</div>
 	</div>
-	<hr size="1" />
-	<p align="center">
-	<input name="action" type="hidden" id="action" value="join">
-	<input type="submit" name="Submit2" value="送出申請">
-	<input type="reset" name="Submit3" value="重設資料">
-	<input type="button" name="Submit" value="回上一頁" onClick="window.history.back();"></p>
-	</form></td>
-	</tr>
-	</table></td>
-	</tr>
-</table>
 </body>
 </html>

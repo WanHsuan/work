@@ -1,15 +1,4 @@
 <?php
-function GetSQLValueString($theValue,$theType){
-    switch ($theType){
-        case "string":
-            $theValue=($theValue != "") ? filter_var($theValue,FILTER_SANITIZE_MAGIC_QUOTES) : "";
-            break;
-        case "int":
-            $theValue=($theValue != "") ? filter_var($theValue,FILTER_SANITIZE_NUMBER_INT) : "";
-            break;
-    }
-    return $theValue;
-}
 require_once ("connMysql.php");
 session_start();
 // 檢查是否經過登入
@@ -22,26 +11,23 @@ if (isset($_GET["logout"]) && ($_GET["logout"] == "true")) {
     unset($_SESSION["customerid"]);
     header("Location: login.php");
 }
+?>
+<?php
 
-if(isset($_POST["action"])&&($_POST["action"]=="add")){
-    $query_insert = "INSERT INTO Question (QuestionContent ,QuestionDateTime ,QuestionSubject ,CustomerID) VALUES (?, NOW(), ?, ?)";
-    $stmt = $db_link->prepare($query_insert);
-    $stmt->bind_param("sss",
-        GetSQLValueString($_POST["content"], "string"),
-        GetSQLValueString($_POST["subject"], "string"),
-        GetSQLValueString($_SESSION["customerid"], "string"));
-    $stmt->execute();
-    $stmt->close();
-    //重新導向回到主畫面
-    header("Location: group.php");
-}
-
-require_once("connectmysql.php");
-
-$CustomerID=$_SESSION["customerid"];
-$Arr2=array();
-//建立資料連接
+require_once ("connectmysql.php");
+// 建立資料連接
 $link = create_connection();
+date_default_timezone_set('Asia/Taipei');
+$ActualDate = date("Y-m-d");
+$sql = "SELECT StoreMarketingPictureDMFilename,StoreID FROM StoreMarketing,StoreMarketingPicture WHERE StoreMarketing.StoreMarketingID=StoreMarketingPicture.StoreMarketingID  AND  StoreMarketingBeginDate BETWEEN DATE_SUB('$ActualDate', INTERVAL '14' DAY) AND DATE_ADD('$ActualDate', INTERVAL '14' DAY)  AND StoreMarketingEndDate>'$ActualDate' ORDER BY StoreMarketingPicture.StoreMarketingID DESC";
+$result = execute_sql($link, "handstory", $sql);
+
+$sql1 = "SELECT StorePhoto,Transaction.StoreID FROM Transaction,store WHERE Transaction.StoreID=store.StoreID GROUP BY Transaction.StoreID ORDER BY COUNT(Transaction.StoreID) DESC";
+$result1 = execute_sql($link, "handstory", $sql1);
+
+// $sql2="SELECT PictureURL FROM Work,WorkPicture WHERE WorkPicture.WorkID=Work.WorkID GROUP BY WorkPicture.WorkID ORDER BY WorkPicture.WorkID DESC";
+$sql2 = "SELECT PictureURL,WorkPicture.WorkID,StoreID FROM WorkPicture,Work WHERE WorkPicture.WorkID=Work.WorkID GROUP BY `WorkID` DESC";
+$result2 = execute_sql($link, "handstory", $sql2);
 
 // 搜尋全部店家
 $sql99 = "SELECT * FROM store";
@@ -50,81 +36,96 @@ $total_records99 = mysqli_num_rows($result99);
 $j99 = 1;
 
 // 搜尋常用店家
+$CustomerID = $_SESSION["customerid"];
 $sql100 = "SELECT CustomerUse.StoreID,StoreName FROM CustomerUse,store WHERE CustomerUse.CustomerID='$CustomerID' AND CustomerUse.StoreID=store.StoreID ";
 $result100 = execute_sql($link, "handstory", $sql100);
 $total_records100 = mysqli_num_rows($result100);
 $i100 = 1;
+// 釋放資源並關閉資料連接
+
 ?>
+
+
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head>
-<meta charset="utf-8"><link rel="stylesheet" href="style.css" type="text/css">
-
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
 <meta name="viewport" content="width= device-width" />
 <link rel="stylesheet" href="style.css" type="text/css">
-
-
-<style type="text/css">
-#apDiv4 {
-	position: absolute;
-	left: 400px;
-	top: 150px;
-	width: 584px;
-	height: 519px;
-	z-index: 1;
-}
-
-h2 {
-	font-size: 30px;
-	color: #a7a5a7;
-	font-family: "翩翩體-繁";
-	text-align: center;
-	margin-buttom: 20px;
-	padding-top: 20px;
-}
-
-p {
-	font-family: "翩翩體-繁";
-	font-size: 22px;
-	color: #a7a5a7;
-}
-
-table{
-font-family: "翩翩體-繁";
-	font-size: 20px;
-	color: #a7a5a7;
-}
-
-</style>
-<title>Hand's Story--我要提問</title>
-<!--彈出框-->
+	<title>Hand's Story</title>
+	<!--彈出框-->
 <link rel="stylesheet" href="remodal.css">
 <link rel="stylesheet" href="remodal-default-theme.css">
 <link
 	href="http://ajax.googleapis.com/ajax/libs/jqueryui/1.10.2/themes/hot-sneaks/jquery-ui.css"
 	rel="stylesheet">
-<script type="text/javascript"
+	<style>
+.A {
+	width: 1380px;
+	height: 400px;
+	background-color: rgb(243, 243, 243);
+	padding: 0px;
+	margin: 0px;
+}
+
+.B {
+	width: 1380px;
+	height: 400px;
+}
+
+h1 {
+	padding-top: 25px;
+	text-align: center;
+	font-family: "翩翩體-繁";
+	font-size: 26px;
+	color:#a7a5a7;
+	margin: 0px;
+}
+</style>
+
+	<!--jcarousel-->
+	<link rel="stylesheet"
+		href="https://cdnjs.cloudflare.com/ajax/libs/OwlCarousel2/2.0.0-beta.2.4/assets/owl.carousel.min.css"></link>
+	<link rel="stylesheet" href="jcarouselstyle.css">
+		<style type="text/css">
+#apDiv3 {
+	position: absolute;
+	left: 25px;
+	top: 222px;
+	width: 1325px;
+	height: 228px;
+	z-index: 1;
+}
+
+#apDiv4 {
+	position: absolute;
+	left: 25px;
+	top: 622px;
+	width: 1325px;
+	height: 228px;
+	z-index: 1;
+}
+
+#apDiv5 {
+	position: absolute;
+	left: 25px;
+	top: 1022px;
+	width: 1325px;
+	height: 228px;
+	z-index: 1;
+}
+
+
+</style>
+	
+	<script type="text/javascript"
 	src="http://ajax.googleapis.com/ajax/libs/jqueryui/1.10.2/jquery-ui.min.js"></script>
 <script type="text/javascript"
 	src="http://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
-	
-<script language="javascript">
-function checkForm(){	 
-	if(document.formPost.content.value==""){
-		alert("請填寫問題內容!");
-		document.formPost.content.focus();
-		return false;
-	}
-	if(document.formPost.subject.value==""){
-		alert("請填寫主題!");
-		document.formPost.subject.focus();
-		return false;
-	}
-		return confirm('確定送出嗎？');
-}
-</script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/OwlCarousel2/2.0.0-beta.2.4/owl.carousel.min.js"></script>
+    
 </head>
+
 <body>
 	<!--頁首-->
 	<div id="apDiv7">
@@ -204,7 +205,7 @@ while ($row100 = mysqli_fetch_assoc($result100) and $i100 < 10 and $i100 >= 6 an
 			<li><a href="shoppingrecord_search_customer.php" target="_parent">我的訂單</a></li>
 			<li><a href="consumerhistorycomment.php" target="_parent"
 				style='text-align: left;'>我的評論<?php
-    // 待平價預約數
+  
     // 已經評論的
     $sql333 = " SELECT CustomerComment.TransactionID FROM CustomerComment WHERE CustomerComment.CustomerID='$CustomerID'";
     $result333 = execute_sql($link, "handstory", $sql333);
@@ -217,9 +218,9 @@ while ($row100 = mysqli_fetch_assoc($result100) and $i100 < 10 and $i100 >= 6 an
     
     $totalr = $total_records444 - $total_records333;
     echo "<div class='countc' style='position:absolute;top:10px;left:260px;'>" . $totalr . "</div>";
+    // echo "<div class='count'>" . $total . "</div>";
     mysqli_free_result($result333);
     mysqli_free_result($result444);
-    
     ?></a>
 				<ul>
 					<li><a class="sub" href="consumerhistorycomment.php" target="_parent">待評價</a></li>
@@ -237,52 +238,68 @@ while ($row100 = mysqli_fetch_assoc($result100) and $i100 < 10 and $i100 >= 6 an
 			<li><a id="st">美甲店</a></li>
 			<li><a href="searchpartialstore.php" target="_parent">美甲地圖</a></li>
 			<li><a id="fav">收藏店家</a></li>
-			<li><a class='focus' href="group.php" target="_parent">論壇</a></li>
+			<li><a href="group.php" target="_parent">論壇</a></li>
 			<li><a href="product_showall_customer.php" target="_parent">銷售平台</a></li>
 		</ul>
 	</div>
-
-	<!--提問背景-->
-	<div class="question">
-		<img src="images/我要提問背景.jpg" width="1380" />
-		<div id="apDiv4">
-			<h2>我要提問</h2>
-			<table width="700" border="0" align="center" cellpadding="0"
-				cellspacing="0">
-				<tr>
-					<td><div id="mainRegion">
-							<form action="" method="post" name="formPost" id="formPost"
-								onSubmit="return checkForm();">
-								<table width="800" border="0" align="center" cellpadding="10"
-									cellspacing="0">
-									<tr valign="top">
-									<td>
-             主題：</td><td><input type="text" name="subject" style="border:1px #dcd8dc solid; border-radius:5px;width:300px;height:30px;font-family:'偏偏體-繁';font-size:20px;"></td></tr>
-<tr>
-										<td>內容:</td><td>
-											
-												<textarea name="content"
-													style="width: 470px; height: 200px; border:1px #dcd8dc solid; border-radius:5px;"></textarea>
-										
-										</td>
-									</tr>
-									<tr valign="top">
-										<td colspan="3" valign="middle" style="padding-left: 150px;padding-top:50px;">
-											<input name="action" type="hidden" id="action" value="add"> <input
-											type="submit" name="button" class="buttons" value="送出"> <input
-											type="reset" name="button2" class="buttons" value="清空"> <input
-											type="button" name="button3" class="buttons" value="回上一頁"
-											onClick="window.history.back();">
-										</td>
-									</tr>
-								</table>
-							</form>
-						</div></td>
-				</tr>
-			</table>
+	<!-- 第一塊 -->
+	<div class="A">
+		<h1>最新活動 Latest Events</h1>
+		<div id="apDiv3">
+			<div class="owl-carousel ">
+    		<?php
+    
+    while ($row = mysqli_fetch_assoc($result)) {
+        $StoreMarketingPictureDMFilename = $row["StoreMarketingPictureDMFilename"];
+        ?>
+         <div class="item"><?php echo "<a class='const' href='store.php?StoreID=". ($row["StoreID"]) . "'>"."<img class='pic' src='marketingpicture/$StoreMarketingPictureDMFilename' class='image' height='220' style='border-radius:5px; box-shadow: #efefef 0px 0px 10px 10px;'>"."</a>";?></div>
+<?php } 
+mysqli_free_result($result);?>
+	  </div>
 		</div>
 	</div>
-	<!--彈出框-->
+	<!--第二塊-->
+	<div class="B">
+		<h1>新品上市 New Arrival</h1>
+		<div id="apDiv4">
+			<div class="owl-carousel ">
+    		<?php
+    
+    while ($row2 = mysqli_fetch_assoc($result2)) {
+        $PictureURL = $row2["PictureURL"];
+        ?>
+         <div class="item"><?php echo "<a class='const' href='store.php?StoreID=". ($row2["StoreID"]) . "'>"."<img class='pic' src='workpicture/$PictureURL' class='image' height='220' style='border-radius:5px; box-shadow: #efefef 0px 0px 10px 10px;'>"."</a>";?></div>
+<?php } 
+mysqli_free_result($result2);?>
+	  </div>
+		</div>
+
+	</div>
+	<!--第三塊-->
+	<div class="A">
+		<h1>熱門榜 Hot Sale</h1>
+		<div id="apDiv5">
+			<div class="owl-carousel ">
+    		<?php
+    
+    while ($row1 = mysqli_fetch_assoc($result1)) {
+        $StorePhoto = $row1["StorePhoto"];
+        ?>
+            <div class="item"><?php echo "<a class='const' href='store.php?StoreID=". ($row1["StoreID"]) . "'>"."<img class='pic' src='storephoto/$StorePhoto' class='image' height='220' style='border-radius:5px; box-shadow: #efefef 0px 0px 10px 10px;'>"."</a>";?></div>
+<?php } 
+
+mysqli_free_result($result1);?>
+	  </div>
+		</div>
+			
+	</div>
+	<!--第四塊-->
+	<div class="B" style="height:150px;">
+		<h1>--Hand's Story--</h1>
+		<p style="font-family:'翩翩體-繁';text-align:center;color:#a7a5a7;">聯絡我們:台北市文山區指南路二段64號</p>
+	<a class='buttona' href='hcindexm.php' style="margin-left:650px;">行動版</a>
+	</div>
+<!--彈出框-->
 	<div class="remodal" data-remodal-id="modals" style='overflow: scroll; height: 500px;width:350px;'>
 		<button data-remodal-action="close" class="remodal-close"></button>
 		<?php
@@ -312,8 +329,16 @@ while ($row100 = mysqli_fetch_assoc($result100) and $i100 < 10 and $i100 >= 6 an
 	<!--彈出框-->
 	<script src="remodal.js"></script>
 
-	
+
+
+
 	<script>
+		$('.owl-carousel').owlCarousel({
+    		loop:false,
+    		margin:15,
+    		nav:false,	
+			items:4,
+		})
 		$(document).ready(function(){
 			$('#fav,#apDiv6').hover(function(){
 				$('#apDiv6').show();
@@ -332,13 +357,18 @@ while ($row100 = mysqli_fetch_assoc($result100) and $i100 < 10 and $i100 >= 6 an
 		})
 
 	</script>
+
+
 </body>
 </html>
-<?php 
+
+<?php
+
+
 mysqli_free_result($result99);
 mysqli_free_result($result100);
 
-// 關閉資料連接
+
 mysqli_close($link);
 
 ?>
